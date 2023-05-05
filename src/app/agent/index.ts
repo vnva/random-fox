@@ -16,17 +16,26 @@ export const agentMiddleware =
 
     const { payload } = action;
 
-    try {
-      if (payload.onStart) dispatch(payload.onStart);
+    const onStart = payload.onStart;
+    const onSuccess = payload.onSuccess;
+    const onEnd = payload.onEnd;
+    const cache = payload.cache;
 
-      if (!!payload.cache && !payload.cache.disabled && agentCache.has(payload.url)) {
-        const { data, lastResponseTime } = agentCache.get(payload.url)!;
+    const cacheEnabled = !!cache && !cache.disabled;
+    const existingCacheData = agentCache.get(payload.url);
 
-        if (Date.now() < lastResponseTime + ms(payload.cache.expires)) {
-          if (payload.onSuccess) dispatch(payload.onSuccess(data));
-          return;
-        }
+    if (cacheEnabled && existingCacheData) {
+      const { lastResponseTime, data } = existingCacheData;
+      const cacheNotExpired = Date.now() < lastResponseTime + ms(cache.expires);
+
+      if (cacheNotExpired) {
+        onSuccess && dispatch(onSuccess(data));
+        return;
       }
+    }
+
+    try {
+      onStart && dispatch(onStart);
 
       const { data } = await axios({
         url: payload.url,
@@ -34,24 +43,26 @@ export const agentMiddleware =
         data: payload.data,
       });
 
-      if (payload.cache) {
-        addAgentCacheItem(payload.url, payload.cache.expires, data);
-      } else if (agentCache.has(payload.url)) {
+      if (cache) {
+        addAgentCacheItem(payload.url, cache.expires, data);
+      } else if (existingCacheData) {
         updateAgentCacheItem(payload.url, data);
       }
 
-      if (payload.onSuccess) dispatch(payload.onSuccess(data));
+      onSuccess && dispatch(onSuccess(data));
     } catch (error) {
       if (payload.onError) {
         dispatch(payload.onError(error));
         return;
-      } else if (onError) {
+      }
+
+      if (onError) {
         onError(error);
         return;
-      } else {
-        throw error;
       }
+
+      throw error;
     } finally {
-      if (payload.onEnd) dispatch(payload.onEnd);
+      onEnd && dispatch(onEnd);
     }
   };

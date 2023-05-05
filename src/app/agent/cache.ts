@@ -1,7 +1,7 @@
 import ms from 'ms';
 
 interface AgentCacheItem {
-  expires: number[];
+  expirationTimes: number[];
   lastResponseTime: number;
   data: unknown;
 }
@@ -9,43 +9,44 @@ interface AgentCacheItem {
 export const agentCache = new Map<string, AgentCacheItem>();
 
 export function addAgentCacheItem(url: string, expires: string, data: unknown) {
-  const msExpires = ms(expires);
+  const expirationTime = ms(expires);
+  const existingCacheData = agentCache.get(url);
 
-  if (agentCache.has(url)) {
-    const newExpires = [...agentCache.get(url)!.expires, msExpires];
-
+  if (existingCacheData) {
+    existingCacheData.expirationTimes.push(expirationTime);
+    existingCacheData.lastResponseTime = Date.now();
+    existingCacheData.data = data;
+  } else {
     agentCache.set(url, {
-      expires: newExpires,
+      expirationTimes: [expirationTime],
       lastResponseTime: Date.now(),
       data,
     });
   }
-
-  agentCache.set(url, { expires: [msExpires], lastResponseTime: Date.now(), data });
 }
 
 export function updateAgentCacheItem(url: string, data: unknown) {
-  agentCache.set(url, {
-    expires: [...agentCache.get(url)!.expires],
-    lastResponseTime: Date.now(),
-    data,
-  });
+  const cacheItem = agentCache.get(url);
+  if (!cacheItem) return;
+
+  cacheItem.lastResponseTime = Date.now();
+  cacheItem.data = data;
 }
 
-setInterval(
-  () =>
-    requestIdleCallback(() => {
-      const now = Date.now();
+setInterval(() => {
+  requestIdleCallback(() => {
+    const now = Date.now();
 
-      for (const [key, item] of agentCache) {
-        const newExpires = item.expires.filter((expires) => now < expires + item.lastResponseTime);
+    agentCache.forEach((item, key) => {
+      const newExpirationTimes = Array.from(item.expirationTimes).filter(
+        (expires) => now < expires + item.lastResponseTime
+      );
 
-        if (newExpires.length === 0) {
-          agentCache.delete(key);
-        } else {
-          agentCache.set(key, { ...item, expires: newExpires });
-        }
+      if (newExpirationTimes.length === 0) {
+        agentCache.delete(key);
+      } else {
+        agentCache.set(key, { ...item, expirationTimes: newExpirationTimes });
       }
-    }),
-  1000
-);
+    });
+  });
+}, 1000);

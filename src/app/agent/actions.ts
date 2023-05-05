@@ -30,8 +30,8 @@ export function agentRequestAction<T, R, M extends Method = 'get'>(
 
 export function isAgentAction(action: unknown): action is ReturnType<typeof agentRequestAction> {
   return (
-    !!action &&
     typeof action === 'object' &&
+    action !== null &&
     'type' in action &&
     action.type === AGENT_REQUEST_ACTION
   );
