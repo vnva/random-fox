@@ -24,17 +24,17 @@ export const agentMiddleware =
     const cacheEnabled = !!cache && !cache.disabled;
     const existingCacheData = agentCache.get(payload.url);
 
-    if (cacheEnabled && existingCacheData) {
-      const { lastResponseTime, data } = existingCacheData;
-      const cacheNotExpired = Date.now() < lastResponseTime + ms(cache.expires);
-
-      if (cacheNotExpired) {
-        onSuccess && dispatch(onSuccess(data));
-        return;
-      }
-    }
-
     try {
+      if (cacheEnabled && existingCacheData) {
+        const { lastResponseTime, data } = existingCacheData;
+        const cacheNotExpired = Date.now() < lastResponseTime + ms(cache.expires);
+
+        if (cacheNotExpired) {
+          onSuccess && dispatch(onSuccess(data));
+          return;
+        }
+      }
+
       onStart && dispatch(onStart);
 
       const { data } = await axios({
