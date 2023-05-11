@@ -10,4 +10,6 @@ export const buttonStyles = cva([
   'border-none',
   'disabled:bg-neutral-2',
   'font-sans',
+  'disabled:hover:bg-neutral-2',
+  'disabled:cursor-default',
 ]);

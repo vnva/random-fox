@@ -30,7 +30,7 @@ export const randmFoxSlice = createSlice({
   },
 });
 
-export const { setExpires: setRandomFoxExpires } = randmFoxSlice.actions;
+export const { setExpires } = randmFoxSlice.actions;
 
 export const fetchRandomFoxImage = (expires: string, disableCache = false) =>
   agentRequestAction<never, { image: string }>({
